@@ -15,6 +15,8 @@ MAX_NUM_ERRORS_IN_TRY = 50
 bacteria_input = r"Xanthomonas_oryzae" #later: check if runs on lowercase
 
 def get_genomes(num_try: int):
+    start = time.time()
+    print(start)
     print(f'starting num_try {num_try}')
 
     ftp = FTP(SERVER_PATH)
@@ -36,6 +38,7 @@ def get_genomes(num_try: int):
     local_folder = os.path.join(os.path.normpath(SAVE_FOLDER), os.path.basename(os.path.normpath(bacteria_input)))
     os.makedirs(local_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
 
+    print(f"Starting to download assmeblies of bacteria {bacteria_input}")
     for i, bacteria in enumerate(bacteria_folders_clean):
         file = None
         try:
@@ -66,23 +69,31 @@ def get_genomes(num_try: int):
                 if file != None:
                     file.close()
                 num_already_downloaded += 1
+                if num_already_downloaded == 10:
+                    end = time.time()
+                    print(f"Runtime of 10 downloads is {end - start}")
+                if num_already_downloaded==100:
+                    end = time.time()
+                    print(f"Runtime of 100 downloads is {end - start}")
         except:
             num_errors_in_try += 1
             print(f'error downloading bacteria {bacteria}')
             if num_errors_in_try >= MAX_NUM_ERRORS_IN_TRY:
                 break
+        print(f'num_try {num_try}, already_downloaded {num_already_downloaded} | len {len(bacteria_folders_clean)}')
 
+    end = time.time()
+    print(f"Runtime of all downloads is {end - start}")
     print(f'num_try {num_try}, already_downloaded {num_already_downloaded} | len {len(bacteria_folders_clean)}')
+    #print(f'num_try {num_try}, already_downloaded {num_already_downloaded} | len {len(bacteria_folders_clean)}')
+    print("Quitting server connection")
     ftp.quit()  # This is the “polite” way to close a connection
 
 
-start = time.time()
-print(f"Starting to download assmeblies of bacteria {bacteria_input}")
+
 for i in range(NUMBER_OF_TRIES):
     try:
         get_genomes(i)
     except Exception as e:
         print(e)
         print(f'finished try number: {i} out of {NUMBER_OF_TRIES}')
-end = time.time()
-print(f"Runtime of the program is {end - start}")
