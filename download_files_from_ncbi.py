@@ -130,11 +130,11 @@ def get_genomes(num_try: int):
 
     #see if there is a way to write this in one line
     os.makedirs(local_bacteria_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
-    #os.makedirs(local_stats_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
+    os.makedirs(local_stats_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
     os.makedirs(local_fasta_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
 
-    #num_stats_downloaded = download_stats(ftp, bacteria_folders_clean, local_stats_folder)
-    #print(f'num_try {num_try}, already_downloaded {num_stats_downloaded} | len {len(bacteria_folders_clean)}')
+    num_stats_downloaded = download_stats(ftp, bacteria_folders_clean, local_stats_folder)
+    print(f'num_try {num_try}, already_downloaded {num_stats_downloaded} | len {len(bacteria_folders_clean)}')
 
     accession_ids_to_download = list(get_best_assemblies_per_org_df(local_stats_folder)["last RefSeq accession ID"])
     num_fasta_downloaded = download_fastas(ftp, bacteria_folders_clean, local_fasta_folder, accession_ids_to_download)
