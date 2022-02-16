@@ -1,10 +1,9 @@
 #https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/Xanthomonas_oryzae/representative/GCF_001021915.1_ASM102191v1/
 """
 next steps:
-- option to download only for specific bacteria - DONE
 - check if the downloading time from ncbi is similar time - if not - see if there is a way of downloading the whole folder
 - make sure the codes comes to an end (quits the ftp connection) - works on bacteria with small database, but for some reason doesn't end for x.oryzae. Even though downloads everything (I think) - it gets errors at the end of the run...
--> idea of how to check this out - count all assemblies and check what debug while seeing what happens when gets to the designated number
+-> idea of how to check this out - count all assemblies and check with debug while seeing what happens when gets to the designated number
 - connect the stats code - to download only relevant ones...
 """
 
@@ -131,21 +130,22 @@ def get_genomes(num_try: int):
 
     #see if there is a way to write this in one line
     os.makedirs(local_bacteria_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
-    os.makedirs(local_stats_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
+    #os.makedirs(local_stats_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
     os.makedirs(local_fasta_folder, exist_ok=True)  # I think makedir is enough (doens't need to be makedirs)
 
-    num_stats_downloaded = download_stats(ftp, bacteria_folders_clean, local_stats_folder)
-    accesion_ids_to_download = list(get_best_assemblies_per_org_df(local_stats_folder)["last RefSeq accession ID"])
-    num_fasta_downloaded = download_best_assemblies(ftp, bacteria_folders_clean, local_fasta_folder, accesion_ids_to_download)
+    #num_stats_downloaded = download_stats(ftp, bacteria_folders_clean, local_stats_folder)
+    #print(f'num_try {num_try}, already_downloaded {num_stats_downloaded} | len {len(bacteria_folders_clean)}')
 
-
-    print(f'num_try {num_try}, already_downloaded {num_stats_downloaded} | len {len(bacteria_folders_clean)}')
+    accession_ids_to_download = list(get_best_assemblies_per_org_df(local_stats_folder)["last RefSeq accession ID"])
+    num_fasta_downloaded = download_fastas(ftp, bacteria_folders_clean, local_fasta_folder, accession_ids_to_download)
     print(f'num_try {num_try}, already_downloaded {num_fasta_downloaded} | len {len(bacteria_folders_clean)}')
 
     ftp.quit()  # This is the “polite” way to close a connection
     print("Successfully quited ftp connection")
 
-def download_best_assemblies(ftp, bacteria_folders_clean, save_folder, accession_ids_list):
+
+# TODO: turn this into general function for downloading stats or assemblies
+def download_fastas(ftp, bacteria_folders_clean, save_folder, accession_ids_list):
     start = time.time()
     print(datetime.now())
 
@@ -158,32 +158,32 @@ def download_best_assemblies(ftp, bacteria_folders_clean, save_folder, accession
         all_assembly_folder = bacteria + "/" + ALL_ASSEMBLY_PREFIX # find out if there is a way of downloading this whole folder in one go (even better - of downloading only the files in this folder that end with _genomic.fna.gz)
         assemblies = ftp.nlst(all_assembly_folder)
         for j in range(len(assemblies)):
-            accession_id = os.path.basename(assemblies[j]).split("_")[0]
-            print(accession_id)
-            if accession_id in accession_ids_list:
-                try:
-                    file2download = f'{assemblies[j]}/{os.path.split(assemblies[j])[-1]}_genomic.fna.gz'
-                    local_filename = os.path.join(save_folder, os.path.basename(os.path.normpath(file2download)))
-                    file = open(local_filename, 'wb')
-                    ftp.retrbinary('RETR ' + file2download, file.write)
-                    #print(f'finished downloading file {local_filename}')
-                except:
-                    print(f'error downloading fasta file for {assemblies[j]} of bacteria {bacteria}')
-                    num_errors_in_try += 1
-                if file != None:
+            file_basename = os.path.basename(assemblies[j])
+            inlist = False
+            for acc in accession_ids_list:
+                if file_basename.startswith(acc):
+                    inlist = True
+                    try:
+                        file2download = f'{assemblies[j]}/{os.path.split(assemblies[j])[-1]}_genomic.fna.gz'
+                        local_filename = os.path.join(save_folder, os.path.basename(os.path.normpath(file2download)))
+                        file = open(local_filename, 'wb')
+                        ftp.retrbinary('RETR ' + file2download, file.write)
+                        #print(f'finished downloading file {local_filename}')
+                    except:
+                        print(f'error downloading fasta file for {assemblies[j]} of bacteria {bacteria}')
+                        num_errors_in_try += 1
                     file.close()
-
-                num_already_downloaded += 1
-                if num_already_downloaded % 100 == 0:
-                    end = time.time()
-                    print(f"Runtime of {num_already_downloaded} downloads is {(end - start)/60} minutes")
-
+                    num_already_downloaded += 1
+                    if num_already_downloaded % 100 == 0:
+                        end = time.time()
+                        print(f"Runtime of {num_already_downloaded} downloads is {(end - start)/60} minutes")
+            if not inlist:
+                print("filename %s was not in list" % file_basename)
         if num_errors_in_try > NUM_OF_ERRORS: #if there are more than NUM_OF_ERRORS unsuccessful downloads then try running all over again
             break
     print(f"Runtime of all downloads is {(time.time() - start) / 60} minutes")
     return num_already_downloaded
 
-#TODO: turn this into general function for downloading stats or assemblies
 def download_stats(ftp, bacteria_folders_clean, save_folder):
     start = time.time()
     print(datetime.now())
@@ -207,8 +207,7 @@ def download_stats(ftp, bacteria_folders_clean, save_folder):
             except:
                 print(f'error downloading stats file for {assemblies[j]} of bacteria {bacteria}')
                 num_errors_in_try += 1
-            if file != None:
-                file.close()
+            file.close()
             num_already_downloaded += 1
             if num_already_downloaded % 100 == 0:
                 end = time.time()
